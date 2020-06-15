@@ -7,88 +7,89 @@
 #include <random>
 #include <algorithm>
 
-#define INF 1000.0f
-
 // Alternative names for more readability
-using City = char;
+using City = int;
 using Route = std::vector<City>;
-using Graph = std::unordered_map<City, std::unordered_map<City, float>>;
+using FloatType = double;
+
+struct Node {
+	FloatType x;
+	FloatType y;
+};
+
+FloatType getDistanceSquare(const Node& n1, const Node& n2) {
+	auto dx = n1.x - n2.x;
+	auto dy = n1.y - n2.y;
+	return dx * dx + dy * dy;
+}
+
+FloatType getDistance(const Node& n1, const Node& n2) {
+	return std::sqrt(getDistanceSquare(n1,n2));
+}
+
+
+class GraphT {
+public:
+	GraphT(const std::vector<Node>& nodes) : m_nodes(nodes) {}
+
+	void init() {
+		for (size_t i = 0; i < m_nodes.size(); i++) {
+			m_distances[i].resize(m_nodes.size());
+
+			for (size_t j = 0; j < m_nodes.size(); j++) {
+				// Use getDistanceSquare to speed up a little 
+				m_distances[i][j] = getDistance(m_nodes[i], m_nodes[j]);
+			}
+		}
+	}
+
+	FloatType getCost(int index1, int index2) { return m_distances[index1][index2]; }
+
+	FloatType getCost(const std::vector<int>& route) {
+		FloatType sum = 0.0;
+		for (size_t i = 0; i < route.size(); i++) {
+			sum += getCost(route[i], route[(i + 1) % route.size()]);
+		}
+		return sum;
+	}
+
+	inline size_t getNodeSize() const { return m_nodes.size(); }
+
+private:
+	std::vector<Node> m_nodes;
+	std::unordered_map<int, std::vector<FloatType>> m_distances;
+};
 
 // Wrapper for route and corresponding cost
 struct Solution {
 	Route route;
-	float cost; 
-	float fitness;
+	FloatType cost = -1.0;
+	FloatType fitness = -1.0;
 };
 
 // Abstract class for all solver(i.e. methods)
 class Solver {
 protected:
-	virtual Solution solve(const Graph& g) = 0;
+	Solver(std::shared_ptr<GraphT> graph) :m_graph(graph) {}
+	virtual Solution solve() = 0;
+
+	std::shared_ptr<GraphT> m_graph = nullptr;
 };
-
-// Get the distance(or cost) between two cities
-float getCost(const Graph& g, City city1, City city2) {
-	// Return a large value if city1 and city2 not exist in the graph 
-	if (g.find(city1) == g.end() || g.find(city2) == g.end()) return std::numeric_limits<float>::max();
-
-	return g.at(city1).at(city2);
-}
-
-// Get the distance(or cost) along the route
-float getCost(const Graph& g, const Route& route) {
-	float sum = 0.0f;
-
-	for (size_t i = 0; i < route.size(); i++) {
-		sum += getCost(g, route[i], route[(i + 1) % route.size()]);
-	}
-
-	return sum;
-}
 
 // Shuffle the order of cities in the route num times
 void shuffle(Route& route) {
 	for (int i = route.size() - 1; i > 0; i--)
 	{
 		int j = rand() % (i + 1);
-
-		auto temp = route[i];
-		route[i] = route[j];
-		route[j] = temp;
+		std::swap(route[i], route[j]);
 	}
 }
 
-// Generate a random float value between [0.0, 1.0]
-float nextFloat() {
+// Generate a random float value between [0.0, 1.0)
+FloatType nextFloat() {
 	static std::random_device rd;// Will be used to obtain a seed for the random number engine
 	std::mt19937 gen(rd());// Standard mersenne_twister_engine seeded with rd()
 	std::uniform_real_distribution<> dis(0.0, 1.0);
-	return dis(gen);
-}
-
-
-
-
-// Define a(un)directed weighted graph
-const Graph G = {
-	{'A', {{'B', 3.0f}, {'C', INF},  {'D', 8.0f},  {'E', 9.0f}}},
-	{'B', {{'A', 3.0f}, {'C', 3.0f}, {'D', 10.0f}, {'E', 5.0f}}},
-	{'C', {{'A', INF},  {'B', 3.0f}, {'D', 4.0f},  {'E', 3.0f}}},
-	{'D', {{'A', 8.0f}, {'B', 10.0f},{'C', 4.0f},  {'E', 20.0f}}},
-	{'E', {{'A', 9.0f}, {'B', 5.0f}, {'C', 3.0f},  {'D', 20.0f}}},
-};
-
-// Check if the graph is valid
-bool validate(const Graph& g) {
-	for (const auto& city : g) {
-		for (const auto& neighbor : city.second) {
-			auto a = g.at(city.first).at(neighbor.first);
-			auto b = g.at(neighbor.first).at(city.first);
-			if (a < 0 || b < 0 || a != b) {
-				return false;
-			}
-		}
-	}
-	return true;
+	return static_cast<FloatType>(dis(gen));
 }
 

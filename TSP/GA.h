@@ -8,39 +8,46 @@ class GA :public Solver {
 	using Population = std::vector<Individual>;
 
 public:
-	Solution solve(const Graph& g) override {
+	GA(std::shared_ptr<GraphT> graph) :Solver(graph) {}
+
+	Solution solve() override {
 		// Initialize population with even size
-		Population population(10);
-		initPopulation(g, population);
+		Population population(90);
+		initPopulation(population);
 
 		// Placeholder variables
-		Individual best;// The elite
-		Individual bestEver;
+		Individual best;// The best individual in each generation
+		Individual bestEver;// The best individual from beginning
 		Individual v;// Selected randomly by fitness
 		Individual offSpring1;
 		Individual offSpring2;
 		Population offSprings(population.size());
+		size_t generation = 0;
 
 		while (true) {
+			generation++;
+
 			// Calculate fitness 
-			calcFitness(g, population);
+			calcFitness(population);
 			// Selection and crossover
 			findBestIndividual(population, best);
 			if (best.fitness > bestEver.fitness) {
 				bestEver = best;
-				std::cout << bestEver.cost << " " << bestEver.fitness << std::endl;
+				std::cout << bestEver.cost << " " << bestEver.fitness << " " << generation << std::endl;
 			}
-			for (int i = 0; i < population.size() / 2; i++) {
+			for (size_t i = 0; i < population.size() / 2; i++) {
 				selectWithFitness(population, v);
 				pmx(best, v, offSpring1, offSpring2);
 				offSprings[i * 2] = offSpring1;
 				offSprings[i * 2 + 1] = offSpring2;
 			}
 			// Mutation
-			calcFitness(g, offSprings);
+			calcFitness(offSprings);
 			mutate(offSprings);
+			// Evolutionary Reversal
+			reversal(offSprings);
 			// Elite reservation
-			calcFitness(g, offSprings);
+			calcFitness(offSprings);
 			Individual worstOffspring;
 			int worstIndex = findWorstIndividual(offSprings, worstOffspring);
 			offSprings[worstIndex] = best;
@@ -52,21 +59,19 @@ public:
 	}
 
 private:
-	void initPopulation(const Graph& g, Population& p) {
+	void initPopulation(Population& p) {
 		Route r;
-		for (const auto& city : g) r.push_back(city.first);
+		for (size_t i = 0; i < m_graph->getNodeSize(); i++) r.push_back(i);
 		for (size_t i = 0; i < p.size(); i++) {
 			p[i].route = r;
 			shuffle(p[i].route);
-			p[i].cost = -1.0f;
-			p[i].fitness = -1.0f;
 		}
 	}
 
-	void calcFitness(const Graph& g, Population& p) {
+	void calcFitness(Population& p) {
 		for (size_t i = 0; i < p.size(); i++) {
-			p[i].cost = getCost(g, p[i].route);
-			p[i].fitness = 1.0f / (p[i].cost);
+			p[i].cost = m_graph->getCost(p[i].route);
+			p[i].fitness = 1.0 / (p[i].cost);
 		}
 	}
 
@@ -105,15 +110,15 @@ private:
 		if (p.size() == 1) { v = p[0]; return; }
 
 		// Normalized fitness
-		std::vector<float> prob(p.size());
-		float sum = 0.0f;
+		std::vector<FloatType> prob(p.size());
+		FloatType sum = 0.0;
 		for (const auto& v : p) { sum += v.fitness; }
 		for (size_t i = 0; i < p.size(); i++) { prob[i] = p[i].fitness / sum; }
 
 		int index = 0;
-		float r = nextFloat();
+		FloatType r = nextFloat();
 
-		while (r >= 0 && index < p.size()) {
+		while (r >= 0 && index < static_cast<int>(p.size())) {
 			r -= prob[index];
 			index++;
 		}
@@ -128,11 +133,11 @@ private:
 		
 		// The range of cross probability is 0.4-0.99
 		auto prob = nextFloat();
-		if (prob < 0.4f || prob > 0.99) return;
+		//if (prob < 0.4f || prob > 0.99) return;
 
 		// Generate cross locations loc1 and loc2
-		int loc1 = nextFloat() * parent1.route.size();
-		int loc2 = nextFloat() * parent1.route.size();
+		int loc1 = static_cast<int>(nextFloat() * parent1.route.size());
+		int loc2 = static_cast<int>(nextFloat() * parent1.route.size());
 		if (loc1 > loc2) { std::swap(loc1, loc2); }
 
 		// Hybridize
@@ -146,7 +151,7 @@ private:
 		// Partially map
 		loc = 0;
 		int index = -1;
-		while (loc < parent1.route.size()) {
+		while (loc < static_cast<int>(parent1.route.size())) {
 			if (loc >= loc1 && loc < loc2) {
 				loc++;
 				continue;
@@ -181,31 +186,20 @@ private:
 		return repeated;
 	}
 
-	void nextGeneration(const Graph& g, Population& p) {
-		/*Population newPopulation(p.size());
-		Individual v;
-		for (size_t i = 0; i < p.size(); i++) {
-			pickWithFitness(p, v);
-			mutate(g, v);
-			newPopulation[i] = v;
-		}
-		p = newPopulation;*/
-	}
-
 	void mutate(Population& offSprings) {
-		static const float maxProb = 0.05f;
-		static const float minProb = 0.01f;
+		static const FloatType maxProb = 0.05;
+		static const FloatType minProb = 0.01;
 
-		float sum = 0.0f;
-		float maxFitness = -1.0;
+		FloatType sum = 0.0;
+		FloatType maxFitness = -1.0;
 		for (const auto& a : offSprings) {
 			sum += a.fitness;
 			if (a.fitness > maxFitness) maxFitness = a.fitness;
 		}
-		float avgFitness = sum / offSprings.size();
+		FloatType avgFitness = sum / offSprings.size();
 
 		for (size_t i = 0; i < offSprings.size(); i++) {
-			auto prob = 1.0f;
+			auto prob = 1.0;
 			if (offSprings[i].fitness < avgFitness) {
 				prob = maxProb;
 			}
@@ -214,12 +208,22 @@ private:
 			}
 
 			if (nextFloat() <= prob) {
-				int loc1 = nextFloat() * offSprings[i].route.size();
-				int loc2 = nextFloat() * offSprings[i].route.size();
+				for (int k = 0; k < 0.3 * offSprings[0].route.size(); k++) {
+					int loc1 = static_cast<int>(nextFloat() * offSprings[i].route.size());
+					int loc2 = static_cast<int>(nextFloat() * offSprings[i].route.size());
 
-				std::swap(offSprings[i].route[loc1], offSprings[i].route[loc2]);
+					std::swap(offSprings[i].route[loc1], offSprings[i].route[loc2]);
+				}
 			}
 		}
 	}
 
+	void reversal(Population& offSprings) {
+		for (size_t i = 0; i < offSprings.size(); i++) {
+			int loc1 = static_cast<int>(nextFloat() * offSprings[i].route.size());
+			int loc2 = static_cast<int>(nextFloat() * offSprings[i].route.size());
+
+			std::swap(offSprings[i].route[loc1], offSprings[i].route[loc2]);
+		}
+	}
 };

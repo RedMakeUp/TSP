@@ -13,35 +13,25 @@
 #include "Common.h"
 #include "GA.h"
 
-// Print the graph
-void print(const Graph& g) {
-	for (const auto& city : g) {
-		std::cout << "---------------" << std::endl;
-		std::cout << city.first << std::endl;
-		for (const auto& neighbor : city.second) {
-			std::cout << neighbor.first << "-" << neighbor.second << " ";
-		}
-		std::cout << std::endl;
-	}
-}
-// Print the route
-void print(const Route& route) {
-	if (route.size() <= 0) return;
-
-	for (size_t i = 0; i < route.size(); i++) {
-		std::cout << route[i];
-	}
-	std::cout << route[0] << std::endl;
-}
-
 int main(int argc, char** argv) {
-	srand(static_cast<unsigned int>(time(NULL)));
+	std::vector<Node> nodes1 = {
+		{0.4, 0.4439},    {0.2439 ,0.1463}, {0.1707, 0.2293},
+		{0.2293 ,0.761},  {0.5171, 0.9414}, {0.8732, 0.6536},
+		{0.6878, 0.5219}, {0.8488, 0.3609}, {0.6683, 0.2536},
+		{0.6195 ,0.2634}
+	};
 
-	if (validate(G)) {
-		GA ga;
-		ga.solve(G);
+	std::vector<Node> nodes2 = {
+		{41,94},{37,84},{54,67},{25,62},{7,64},{2,99},{68,58},{71,44},{54,62},{83,69},{64,60},{18,54},{22,60},{83,46},
+		{91,38},{25,38},{24,42},{58,69},{71,71},{74,78},{87,76},{18,40},{13,40},{82,7},{62,32},{58,35},{45,21},{41,26},
+		{44,35},{4,50}
+	};
 
-	}
+	auto graph = std::make_shared<GraphT>(nodes1);
+	graph->init();
+
+	GA ga(graph);
+	ga.solve();
 
 	return 0;
 }
