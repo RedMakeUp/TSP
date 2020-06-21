@@ -141,8 +141,10 @@
     <ClCompile Include="Tsp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ACO.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="GA.h" />
+    <ClInclude Include="PSO.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

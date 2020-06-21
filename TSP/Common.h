@@ -6,6 +6,8 @@
 #include <time.h>
 #include <random>
 #include <algorithm>
+#include <memory>
+#include <iomanip>
 
 // Alternative names for more readability
 using City = int;
@@ -63,7 +65,7 @@ private:
 // Wrapper for route and corresponding cost
 struct Solution {
 	Route route;
-	FloatType cost = -1.0;
+	FloatType cost = 100000.0;
 	FloatType fitness = -1.0;
 };
 
@@ -91,5 +93,19 @@ FloatType nextFloat() {
 	std::mt19937 gen(rd());// Standard mersenne_twister_engine seeded with rd()
 	std::uniform_real_distribution<> dis(0.0, 1.0);
 	return static_cast<FloatType>(dis(gen));
+}
+
+// Return the index of specified city in a route, return -1 if the city not exist
+int findIndex(const Route& route, City city) {
+	int index = -1;
+
+	for (size_t i = 0; i < route.size(); i++) {
+		if (city == route[i]) {
+			index = i;
+			break;
+		}
+	}
+
+	return index;
 }
 

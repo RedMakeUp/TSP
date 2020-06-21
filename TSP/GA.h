@@ -8,11 +8,13 @@ class GA :public Solver {
 	using Population = std::vector<Individual>;
 
 public:
-	GA(std::shared_ptr<GraphT> graph) :Solver(graph) {}
+	GA(std::shared_ptr<GraphT> graph, size_t iterationSize, size_t populationSize) 
+		:Solver(graph), m_iterationCount(iterationSize), m_populationSize(populationSize)
+	{}
 
 	Solution solve() override {
 		// Initialize population with even size
-		Population population(90);
+		Population population(m_populationSize);
 		initPopulation(population);
 
 		// Placeholder variables
@@ -24,7 +26,7 @@ public:
 		Population offSprings(population.size());
 		size_t generation = 0;
 
-		while (true) {
+		while (generation < m_iterationCount) {
 			generation++;
 
 			// Calculate fitness 
@@ -33,7 +35,7 @@ public:
 			findBestIndividual(population, best);
 			if (best.fitness > bestEver.fitness) {
 				bestEver = best;
-				std::cout << bestEver.cost << " " << bestEver.fitness << " " << generation << std::endl;
+				std::cout << "best cost: " << std::setw(10) << bestEver.cost << std::setw(15) << "Iteration: " << generation << std::endl;
 			}
 			for (size_t i = 0; i < population.size() / 2; i++) {
 				selectWithFitness(population, v);
@@ -55,7 +57,7 @@ public:
 			population = offSprings;
 		}
 
-		return Solution();
+		return bestEver;
 	}
 
 private:
@@ -133,7 +135,7 @@ private:
 		
 		// The range of cross probability is 0.4-0.99
 		auto prob = nextFloat();
-		//if (prob < 0.4f || prob > 0.99) return;
+		if (prob < 0.4f || prob > 0.99) return;
 
 		// Generate cross locations loc1 and loc2
 		int loc1 = static_cast<int>(nextFloat() * parent1.route.size());
@@ -226,4 +228,8 @@ private:
 			std::swap(offSprings[i].route[loc1], offSprings[i].route[loc2]);
 		}
 	}
+
+	private:
+		size_t m_iterationCount;
+		size_t m_populationSize;
 };
